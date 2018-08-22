@@ -1,0 +1,42 @@
+version: "2"
+services:
+  mariadb:
+    image: mariadb:10.3
+    env_file: .env
+    ports:
+      - $MYSQL_LISTEN_PORT:3306
+    volumes:
+      - ./mariadb/db:$MYSQL_DATA_DIR
+      - ./mariadb/init:/docker-entrypoint-initdb.d
+      - ./mariadb/conf.d:/etc/mysql/conf.d
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    env_file: .env
+    ports:
+      - $PHPMYADMIN_LISTEN_PORT:80
+    volumes:
+      - ./phpmyadmin/sessions:/var/lib/php7/session
+    depends_on: 
+      - mariadb
+
+  php:
+    env_file: .env
+    build:
+      context: .
+      dockerfile: ./php/Dockerfile
+    volumes: 
+      - $PUBLIC_DIR:/usr/share/nginx/html
+    depends_on: 
+      - mariadb
+
+  nginx:
+    env_file: .env
+    image: nginx:1.15
+    ports: 
+      - $NGINX_LISTEN_PORT:80
+    volumes: 
+      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+      - $PUBLIC_DIR:/usr/share/nginx/html
+    depends_on: 
+      - php
